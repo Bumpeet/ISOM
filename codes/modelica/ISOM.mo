@@ -18,7 +18,7 @@ package ISOM
     constant Real w[n] = {0.25, 0.227} "ascentric factor";
     
     parameter Real P(unit="Pa")=3.2e+6 "inlet stream pressure";
-    parameter Real Ti (unit="K")= 200+273.15"inlet temperature";
+    parameter Real Ti (unit="K")= 150+273.15"inlet temperature";
      
     parameter Real Fi(unit="mol/hr") = 1000*1000;
     parameter Real yi[n] = {1,0} "inlet mole fraction ";
@@ -52,11 +52,12 @@ package ISOM
     Real S(unit="m3/hr")"overall Vol Flowrate";
     
     Real Cpig[n](each unit ="J/mol-K")"heat capacity of ideal components";
-    Real Cp0ig[n](each unit ="J/mol-K");
-    Real Cp_T1[n](each unit = "J/mol-K");
-    Real Cp_T2[n](each unit = "J/mol-K");
+    Real Cpig_0[n](each unit ="J/mol-K");
+    Real Cpig_T1[n](each unit = "J/mol-K");
+    Real Cpig_T2[n](each unit = "J/mol-K");
     
-    Real delH_ig[n](each unit ="J/mol");
+  //  Real delH_ig[n](each unit ="J/mol");
+    Real delH_i[n](each unit = "J/mol");
     Real delH[rxns](each unit = "J/mol");
     Real delH_res_1[n](each unit = "J/mol");
     Real delHf0[rxns](each unit = "J/mol");
@@ -65,6 +66,12 @@ package ISOM
     Real am, bm, Zm, Am, Bm, Coeffm[4], Vm, Cpigm, Cpresm, Cpm, dadt[n], dadt_m;
     Real a_0[n], b_0[n], dadt_0[n], V_0[n];
     Real r_i[rxns], Cpm_kg, T_in_c(unit="C");
+    
+    Real Cpres_T1[n], Cpres_T2[n], Cpres_0[n], Cpres[n];
+    Real V_T1[n], V_T2[n];
+    Real Z_T1[n], Z_T2[n];
+    Real Coeff_T1[n,4], Coeff_T2[n,4]; 
+    Real Cp_0[n], Cp_T1[n], Cp_T2[n], Cp[n];
    
   
   initial equation
@@ -105,40 +112,60 @@ package ISOM
   // coeff calculation in the equation a*Z^3 + b*Z^2 + c*Z + d =0 and vanderwaals constant
     (Coeff, Coeffm,a, b, c, am, bm, A, B, Am, Bm) = compressiblity(P, comp.Pc, Pr, T, comp.Tc, Tr, Kij, w, y_i, n);
     ( , , a_0, b_0)  = compressiblity(P, comp.Pc, Pr, T0, comp.Tc, T0./comp.Tc, Kij, w, y_i, n);
+    Coeff_T1 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/3), comp.Tc, (T0+(T-T0)/3)./comp.Tc, Kij, w, y_i, n);
+    Coeff_T2 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/6), comp.Tc, (T0+(T-T0)/6)./comp.Tc, Kij, w, y_i, n);
   
   // compressiblity factor calculation
     for i in 1:n loop
       Coeff[i,1]*Z[i]^3 + Coeff[i,2]*Z[i]^2 + Coeff[i,3]*Z[i] + Coeff[i,4] = 0;
+      Coeff_T1[i,1]*Z_T1[i]^3 + Coeff_T1[i,2]*Z_T1[i]^2 + Coeff_T1[i,3]*Z_T1[i] + Coeff_T1[i,4] = 0;
+      Coeff_T2[i,1]*Z_T2[i]^3 + Coeff_T2[i,2]*Z_T2[i]^2 + Coeff_T2[i,3]*Z_T2[i] + Coeff_T2[i,4] = 0;
+      
     end for;
     Coeffm[1]*Zm^3 + Coeffm[2]*Zm^2 + Coeffm[3]*Zm + Coeffm[4] = 0;
+  //  Zm = 0.1395 ;
   
   // molar volume calculation
     V = (R*T/P)*Z;
     V_0 = (R*T/P)*Z_0;
+    V_T1 = (R*T/P)*Z_T1;
+    V_T2 = (R*T/P)*Z_T2;
     Vm = Zm*R*T/P;
   
   // cp values of ideal gas at different temp between T0 and T
+    Cpig_0 = Functions.VapCpId(comp.VapCp, T0);
+    Cpig_T1 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/3);
+    Cpig_T2 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/6);
     Cpig = Functions.VapCpId(comp.VapCp, T);
-    Cp0ig = Functions.VapCpId(comp.VapCp, T0);
-    Cp_T1 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/3);
-    Cp_T2 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/6);
-  // ideal cp for the entire stream
+  
+  // ideal cp for the entire stream and
       Cpigm = sum(y_i .* Cpig);
-   
-  // cp residual calc
+  
+  // cp residual calc for entire stream
     (Cpresm, dadt_m) = Cp_res_m(P,comp.Pc,Vm,T,comp.Tc,a,b,c,am,bm,Kij,y_i,n);
-  // cp real calc
-      Cpm = Cpigm + Cpresm;
+  // cp real calc for entire stream
+      Cpm = Cpigm+ Cpresm;
     
   // der(a) calc using Cp_res function which will be used in the delH_res calc
     for i in 1:n loop
-        ( , , , ,dadt[i]) = Cp_res(comp[i].Pc, V[i], T, comp[i].Tc, Tr[i], w[i]);
-        (  , , , ,dadt_0[i]) = Cp_res(comp[i].Pc, V_0[i], T0, comp[i].Tc, T0/comp[i].Tc, w[i]);
+        
+        (  , , , ,dadt_0[i],Cpres_0[i]) = Cp_res(comp[i].Pc, V_0[i], T0, comp[i].Tc, T0/comp[i].Tc, w[i]);
+        ( , , , , ,Cpres_T1[i]) = Cp_res(comp[i].Pc, V_T1[i], T0+(T-T0)/3, comp[i].Tc, Tr[i], w[i]);  
+        ( , , , , ,Cpres_T2[i]) = Cp_res(comp[i].Pc, V_T2[i], T0+(T-T0)/6, comp[i].Tc, Tr[i], w[i]);  
+        ( , , , ,dadt[i],Cpres[i]) = Cp_res(comp[i].Pc, V[i], T, comp[i].Tc, Tr[i], w[i]);
+  
     end for;
+    
+  ////////
+  Cp_0 = Cpig_0 + Cpres_0;
+  Cp_T1 = Cpig_T1 + Cpres_T1;
+  Cp_T2 = Cpig_T2 + Cpres_T2;
+  Cp = Cpig + Cpres;
   
     for i in 1:n loop
         //"calculating the heat required to cool reactants ideal"
-        delH_ig[i] = (1/3)*(T-T0)*(Cpig[i]+Cp0ig[i]+4*(Cp_T1[i])+2*(Cp_T2[i]));
+        delH_i[i] = (1/3)*(T-T0)*(Cp[i]+Cp_0[i]+4*(Cp_T1[i])+2*(Cp_T2[i]));
+  
         //calc of residual H to cool reactants
         delH_res_1[i] = enthalpy_resid(a[i] ,b[i] ,Z[i] , dadt[i] ,P ,T) - enthalpy_resid(a_0[i], b_0[i], Z_0[i], dadt_0[i], P, T0);
     end for;
@@ -147,7 +174,8 @@ package ISOM
     for i in 1:rxns loop
       if i <=14 then
         // calc overall heat for cooling  of reactants and heating of products for each reaction
-        delH[i] = delH_ig[prod1[i]]-delH_ig[reac1[i]] + delH_res_1[prod1[i]]-delH_res_1[reac1[i]];
+  //      delH[i] = delH_ig[prod1[i]]-delH_ig[reac1[i]]+ delH_res_1[prod1[i]] - delH_res_1[reac1[i]];
+          delH[i] = delH_i[prod1[i]] - delH_i[reac1[i]];
       end if;
       //calc of heat of reaction at standard state for all the reactions
       delHf0[i] = Hf0[prod1[i]]-Hf0[reac1[i]];
@@ -156,7 +184,7 @@ package ISOM
   //heat evolved from each reaction
     Q = delHf0 + delH;
   //denominator in the enthalpy balance
-    denm_new = ((F/S)*Cpm);
+    denm_new = ((sum(Ca))*Cpm);
   
   //component balance
     der(Ca[1]) = ACS*(1/S)*(-r[1] );
@@ -221,7 +249,7 @@ end Cp_res_m;
 
 function Cp_res
 input Real Pc,V,T,Tc,Tr,w;
-output Real /*Cpres,*/dpdt,d2p_dt2,dpdv,dvdt,dera,der2a;
+output Real dpdt,d2p_dt2,dpdv,dvdt,dera,der2a,Cpres;
 protected
 constant Real coeff1 = (0.37464 + 1.54226*w-0.26992*w^2), coeff2=0.45724*(((R*Tc)^2)/Pc),coeff = coeff1*coeff2,
 R=8.314;
@@ -236,7 +264,7 @@ der2a := 0.5*((coeff1*coeff2*(1+coeff1*(1-Tr^0.5))/((Tc^0.5)*T^1.5))+(coeff1^2*c
 dpdt := R/(V-b) - dera/(V*(V+b)+b*(V-b));
 d2p_dt2 := -der2a/(V*(V+b)+b*(V-b)); 
 dvdt := dpdt/(R*T/(V-b)^2-a*(2*V+2*b)/(V*(V+b)+b*(V-b))^2);
-//Cpres :=-R+T*dpdt*dvdt-T*der2a/(8^0.5*b)*log((V+(1-2^0.5)*b)/(V+(1+2^0.5)*b));
+Cpres :=-R+T*dpdt*dvdt-T*der2a/(8^0.5*b)*log((V+(1-2^0.5)*b)/(V+(1+2^0.5)*b));
 end Cp_res;
 
 function compressiblity

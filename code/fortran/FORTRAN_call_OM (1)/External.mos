@@ -1,0 +1,5 @@
+setEnvironmentVar("PATH", "$PATH:/C/OpenModelica1.18.1-64bit/"); getErrorString();
+setEnvironmentVar("PATH", "$PATH:/C/OpenModelica1.18.1-64bit/lib/omlibrary"); getErrorString();
+loadFile("Model.mo"); getErrorString();
+simulate(External, numberOfIntervals=1, stopTime=0.1, outputFormat="csv", variableFilter="z"); getErrorString();
+plot({z}); getErrorString();
