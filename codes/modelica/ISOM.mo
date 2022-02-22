@@ -1,202 +1,196 @@
 within ;
-package ISOM
+package isom
 
-  model hysys_comparision
-    constant Chemsep_Database.Npentane comp1;
-    constant Chemsep_Database.Isopentane comp2;
-    constant Chemsep_Database.Nhexane comp3;
-    constant Chemsep_Database.Twomethylpentane comp4;
-    constant Chemsep_Database.Threemethylpentane comp5;
-    constant Chemsep_Database.TwoTwodimethylbutane comp6;
-    constant Chemsep_Database.TwoThreedimethylbutane comp7;
-    constant Chemsep_Database.Cyclohexane comp8;
-    constant Chemsep_Database.Benzene comp9;
-    constant Chemsep_Database.Hydrogen comp10; 
-    
-    constant Integer n = 3 "no. of components";
-    constant Integer rxns = 2 "no. of reactions";
-    
-    constant Chemsep_Database.General_Properties comp[n]={ comp8, comp9, comp10} "comp contains all the components data ";
-    constant Real Kij[n,n]={{ 0, 0.0126, 0},{ 0.0126, 0, 0},{ 0, 0, 0}} "Binary Interaction coefficients";
-    constant Real Hf0[n](each unit = "J/mol")={ -124600, 82900, 0}"Heat of formation of nC5 and iC5 respectively at standard conditions";   
-    parameter Real K0[rxns](each unit="1/hr") = {6.42716E+12, 5861639397.0}"Pre exponential factor";
-    parameter Real E[rxns](each unit = "J/mol")={129750, 88640}"activation energy";
-    constant Real Z_0[n] = { 0.1334, 0.1123, 1.01}"compressiblity factor at standard state";
-    constant Real w[n] = { 0.211, 0.209, -0.21599} "ascentric factor";
-    
-    parameter Real P(unit="Pa")=3.2e+6 "inlet stream pressure";
-    parameter Real Ti (unit="K")= 200+273.15"inlet temperature";
-     
-    parameter Real Fi(unit="mol/hr") = 1000*1000;
-    parameter Real yi[n] = {0.1,0.1,0.8 } "inlet mole fraction ";//0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.55  0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
-    parameter Real Ca1[n]=Fi*yi/1224; //492.6 for all 0.1's, 1148 for 0.05
-    
-    constant Integer reac1[rxns] = {2,1};
-    constant Integer prod1[rxns] = {1,2};
-    
-    parameter Real mi(each unit = "gm/hr") = Fi*yi*comp.MW "mass flowrate";
-    parameter Real M(unit = "gm/hr") = sum(mi)"total mass flowrate";
-    parameter Real xi = mi/M "initial wt fraction";
+    model hysys_comparision
   
-    constant Real T0 (unit="K") = 298.15"Standard Temp";
-    constant Real Pi = 3.141592654;
-    constant Real R(unit = "J/mol-K")=8.314;
-    constant Real ACS(unit = "m2")=11.89/11.9;
-  
-    Real K[rxns](each unit="mol/hr-m3reactor");
-    Real r[rxns](each unit="mol/hr-m3")"rate";
-    Real Ca[n](each unit="mol/m3") "concetration";
-    Real T(unit="K")"temperature";
-    Real Q[rxns](each unit="J/mol")"heat evolved from reaction";
-    Real denm_new;
-    
-    Real y_i[n]"mole fraction";
-    Real x_i[n]"wt fraction";
-    Real m_i[n](each unit = "g/hr")"individual mass flowrate";
-    Real f_i[n](each unit="mol/hr")"molar flow rate";
-    Real F(unit="mol/hr")"overall flowrate";
-    Real rhom(unit = "mole/m3")"molar density";  
-    Real S(unit="m3/hr")"overall Vol Flowrate";
-    
-    Real Cpig[n](each unit ="J/mol-K")"heat capacity of ideal components";
-    Real Cpig_0[n](each unit ="J/mol-K");
-    Real Cpig_T1[n](each unit = "J/mol-K");
-    Real Cpig_T2[n](each unit = "J/mol-K");
-    
-    Real delH_i[n](each unit = "J/mol");
-    Real delH[rxns](each unit = "J/mol");
-    Real delH_res_1[n](each unit = "J/mol");
-    Real delHf0[rxns](each unit = "J/mol");
-     
-    Real Tr[n], Pr[n], V[n], a[n], b[n], c[n], Z[n](each start = 1), A[n], B[n], Coeff[n,4];
-    Real am, bm, Zm, Am, Bm, Coeffm[4], Vm, Cpigm, Cpresm, Cpm, dadt[n], dadt_m;
-    Real a_0[n], b_0[n], dadt_0[n], V_0[n];
-    Real r_i[rxns], Cpm_kg, T_in_c(unit="C");
-    
-    Real Cpres_T1[n], Cpres_T2[n], Cpres_0[n], Cpres[n];
-    Real V_T1[n], V_T2[n];
-    Real Z_T1[n](each start=1), Z_T2[n](each start=1);
-    Real Coeff_T1[n,4], Coeff_T2[n,4]; 
-    Real Cp_0[n], Cp_T1[n], Cp_T2[n], Cp[n];
-   
-  
-  initial equation
-    Ca=Ca1;
-    T=Ti;
-  
-  equation
-  // reduced pressure and reduced temperature
-    Pr = P./comp.Pc;
-    Tr = T./comp.Tc;
-    
-  //calc of mole-fraction
-    y_i = Ca/sum(Ca);
-  //calc of wt-fraction
-    x_i = y_i.*comp.MW/sum(y_i.*comp.MW);
-  //calc of individual mass flowrate
-    m_i = x_i*M;
-  //calc of individual molar flow rate
-    f_i = m_i./comp.MW;
-  //calc of overall flowrate
-    F = sum(f_i);
-  //calc of molar density of stream
-    rhom = P/(R*T*Zm);
-  //calc of overall volumetric flowrate
-    S = (1/rhom)*F;
-    
-  //calculating rate constant
-    K = K0.*exp(-E./(R*T));
-  
-  // calculating rate expression
-      r[1] = K[1] * Ca[2] * Ca[3];
-      r[2] = K[2]* Ca[1];
-  
-  // coeff calculation in the equation a*Z^3 + b*Z^2 + c*Z + d =0 and vanderwaals constant
-    (Coeff, Coeffm,a, b, c, am, bm, A, B, Am, Bm) = compressiblity(P, comp.Pc, Pr, T, comp.Tc, Tr, Kij, w, y_i, n);
-    ( , , a_0, b_0)  = compressiblity(P, comp.Pc, Pr, T0, comp.Tc, T0./comp.Tc, Kij, w, y_i, n);
-    Coeff_T1 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/3), comp.Tc, (T0+(T-T0)/3)./comp.Tc, Kij, w, y_i, n);
-    Coeff_T2 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/6), comp.Tc, (T0+(T-T0)/6)./comp.Tc, Kij, w, y_i, n);
-  
-  // compressiblity factor calculation
-    for i in 1:n loop
-      Coeff[i,1]*Z[i]^3 + Coeff[i,2]*Z[i]^2 + Coeff[i,3]*Z[i] + Coeff[i,4] = 0;
-      Coeff_T1[i,1]*Z_T1[i]^3 + Coeff_T1[i,2]*Z_T1[i]^2 + Coeff_T1[i,3]*Z_T1[i] + Coeff_T1[i,4] = 0;
-      Coeff_T2[i,1]*Z_T2[i]^3 + Coeff_T2[i,2]*Z_T2[i]^2 + Coeff_T2[i,3]*Z_T2[i] + Coeff_T2[i,4] = 0;
-    end for;
-    Coeffm[1]*Zm^3 + Coeffm[2]*Zm^2 + Coeffm[3]*Zm + Coeffm[4] = 0;
-  
-  // molar volume calculation
-    V = (R*T/P)*Z;
-    V_0 = (R*T/P)*Z_0;
-    V_T1 = (R*T/P)*Z_T1;
-    V_T2 = (R*T/P)*Z_T2;
-    Vm = Zm*R*T/P;
-  
-  // cp values of ideal gas at different temp between T0 and T
-    Cpig_0 = Functions.VapCpId(comp.VapCp, T0);
-    Cpig_T1 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/3);
-    Cpig_T2 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/6);
-    Cpig = Functions.VapCpId(comp.VapCp, T);
-  
-  // ideal cp for the entire stream and
-      Cpigm = sum(y_i .* Cpig);
-  
-  // cp residual calc for entire stream
-    (Cpresm, dadt_m) = Cp_res_m(P,comp.Pc,Vm,T,comp.Tc,a,b,c,am,bm,Kij,y_i,n);
-  // cp real calc for entire stream
-      Cpm = Cpigm+ Cpresm;
-    
-  // der(a) calc using Cp_res function which will be used in the delH_res calc
-    for i in 1:n loop
-        
-        (  , , , ,dadt_0[i],Cpres_0[i]) = Cp_res(comp[i].Pc, V_0[i], T0, comp[i].Tc, T0/comp[i].Tc, w[i]);
-        ( , , , , ,Cpres_T1[i]) = Cp_res(comp[i].Pc, V_T1[i], T0+(T-T0)/3, comp[i].Tc, Tr[i], w[i]);  
-        ( , , , , ,Cpres_T2[i]) = Cp_res(comp[i].Pc, V_T2[i], T0+(T-T0)/6, comp[i].Tc, Tr[i], w[i]);  
-        ( , , , ,dadt[i],Cpres[i]) = Cp_res(comp[i].Pc, V[i], T, comp[i].Tc, Tr[i], w[i]);
-  
-    end for;
-    
-  // Cp real calc
-    Cp_0 = Cpig_0 + Cpres_0;
-    Cp_T1 = Cpig_T1 + Cpres_T1;
-    Cp_T2 = Cpig_T2 + Cpres_T2;
-    Cp = Cpig + Cpres;
-  
-    for i in 1:n loop
-        //"calculating the heat required to cool reactants ideal"
-        delH_i[i] = (1/3)*(T-T0)*(Cp[i]+Cp_0[i]+4*(Cp_T1[i])+2*(Cp_T2[i]));
-  
-        //calc of residual H to cool reactants
-        delH_res_1[i] = enthalpy_resid(a[i] ,b[i] ,Z[i] , dadt[i] ,P ,T) - enthalpy_resid(a_0[i], b_0[i], Z_0[i], dadt_0[i], P, T0);
-    end for;
-    
-  
-  //calc of heat of reaction at standard state for all the reactions
-      delH[1] = (delH_i[1] ) - (3*(delH_i[3]) + delH_i[2] );
-      delH[2] = -delH[1];
+      constant Chemsep_Database.Cyclohexane comp8;
+      constant Chemsep_Database.Benzene comp9;
+      constant Chemsep_Database.Hydrogen comp10; 
       
-   for i in 1:rxns loop
-        delHf0[i] = Hf0[prod1[i]]-Hf0[reac1[i]];
-   end for;   
+      constant Integer n = 3 "no. of components";
+      constant Integer rxns = 1 "no. of reactions";
+      
+      constant Chemsep_Database.General_Properties comp[n]={ comp8, comp9, comp10} "comp contains all the components data ";
+      constant Real Kij[n,n]={{ 0, 0.0126, 0},{ 0.0126, 0, 0},{ 0, 0, 0}} "Binary Interaction coefficients";
+      constant Real Hf0[n](each unit = "J/mol")={ -124600, 82900, 0}"Heat of formation of nC5 and iC5 respectively at standard conditions";   
+      parameter Real K0[rxns](each unit="1/hr") = {6.42716E+9}"Pre exponential factor";//6.42716E+12, 5861639397.0
+      parameter Real E[rxns](each unit = "J/mol")={129750}"activation energy";//129750, 88640
+      constant Real Z_0[n] = { 0.1334, 0.1123, 1.01}"compressiblity factor at standard state";
+      constant Real w[n] = { 0.211, 0.209, -0.21599} "ascentric factor";
+      
+      parameter Real P(unit="Pa")=3.2e+6 "inlet stream pressure";
+      parameter Real Ti (unit="K")= 200+273.15"inlet temperature";
+       
+      parameter Real Fi(unit="mol/hr") = 1000*1000;
+      parameter Real yi[n] = {0.1,0.1,0.8 } "inlet mole fraction ";//0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.55  0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1
+      parameter Real Ca1[n]=Fi*yi/1224; //492.6 for all 0.1's, 1148 for 0.05
+      
+      constant Integer reac1[rxns] = {2};
+      constant Integer prod1[rxns] = {1};
+      
+      parameter Real mi(each unit = "gm/hr") = Fi*yi*comp.MW "mass flowrate";
+      parameter Real M(unit = "gm/hr") = sum(mi)"total mass flowrate";
+      parameter Real xi = mi/M "initial wt fraction";
+    
+      constant Real T0 (unit="K") = 298.15"Standard Temp";
+      constant Real Pi = 3.141592654;
+      constant Real R(unit = "J/mol-K")=8.314;
+      constant Real ACS(unit = "m2")=11.89/11.9;
+    
+      Real K[rxns](each unit="mol/hr-m3reactor");
+      Real r[rxns](each unit="mol/hr-m3")"rate";
+      Real Ca[n](each unit="mol/m3") "concetration";
+      Real T(unit="K")"temperature";
+      Real Q[rxns](each unit="J/mol")"heat evolved from reaction";
+      Real denm_new;
+      
+      Real y_i[n]"mole fraction";
+      Real x_i[n]"wt fraction";
+      Real m_i[n](each unit = "g/hr")"individual mass flowrate";
+      Real f_i[n](each unit="mol/hr")"molar flow rate";
+      Real F(unit="mol/hr")"overall flowrate";
+      Real rhom(unit = "mole/m3")"molar density";  
+      Real S(unit="m3/hr")"overall Vol Flowrate";
+      
+      Real Cpig[n](each unit ="J/mol-K")"heat capacity of ideal components";
+      Real Cpig_0[n](each unit ="J/mol-K");
+      Real Cpig_T1[n](each unit = "J/mol-K");
+      Real Cpig_T2[n](each unit = "J/mol-K");
+      
+      Real delH_i[n](each unit = "J/mol");
+      Real delH[rxns](each unit = "J/mol");
+      Real delH_res_1[n](each unit = "J/mol");
+      Real delHf0[rxns](each unit = "J/mol");
+       
+      Real Tr[n], Pr[n], V[n], a[n], b[n], c[n], Z[n](each start = 1), A[n], B[n], Coeff[n,4];
+      Real am, bm, Zm, Am, Bm, Coeffm[4], Vm, Cpigm, Cpresm, Cpm, dadt[n], dadt_m;
+      Real a_0[n], b_0[n], dadt_0[n], V_0[n];
+      Real r_i[rxns], Cpm_kg, T_in_c(unit="C");
+      
+      Real Cpres_T1[n], Cpres_T2[n], Cpres_0[n], Cpres[n];
+      Real V_T1[n], V_T2[n];
+      Real Z_T1[n](each start=1), Z_T2[n](each start=1);
+      Real Coeff_T1[n,4], Coeff_T2[n,4]; 
+      Real Cp_0[n], Cp_T1[n], Cp_T2[n], Cp[n];
      
-  //heat evolved from each reaction
-    Q = delHf0 + delH;
-  //denominator in the enthalpy balance
-    denm_new = ((sum(Ca))*Cpm);
-  
-  //component balance
-  
-    der(Ca[1]) = ACS*(1/S)*(-r[2] + r[1]);
-    der(Ca[2]) = ACS*(1/S)*(r[2] - r[1]);
-    der(Ca[3]) = ACS*(1/S)*(r[2] - r[1])*3;
-    der(T) = -ACS*(1/S)*(sum(Q.*r)/(denm_new));
     
-  //unit conversions
-    T_in_c = T - 273.15;
-    Cpm_kg = Cpm/sum(y_i.*comp.MW);
-    r_i = r*(1/3.6e+6);//converting mol/m3-hr to Kmol/m3-Sec
+    initial equation
+      Ca=Ca1;
+      T=Ti;
     
-  end hysys_comparision;
+    equation
+    // reduced pressure and reduced temperature
+      Pr = P./comp.Pc;
+      Tr = T./comp.Tc;
+      
+    //calc of mole-fraction
+      y_i = Ca/sum(Ca);
+    //calc of wt-fraction
+      x_i = y_i.*comp.MW/sum(y_i.*comp.MW);
+    //calc of individual mass flowrate
+      m_i = x_i*M;
+    //calc of individual molar flow rate
+      f_i = m_i./comp.MW;
+    //calc of overall flowrate
+      F = sum(f_i);
+    //calc of molar density of stream
+      rhom = P/(R*T*Zm);
+    //calc of overall volumetric flowrate
+      S = (1/rhom)*F;
+      
+    //calculating rate constant
+      K = K0.*exp(-E./(R*T));
+    
+    // calculating rate expression
+        r[1] = K[1] * Ca[2] * Ca[3];
+    //    r[1] = K[1]* Ca[1];
+    
+    // coeff calculation in the equation a*Z^3 + b*Z^2 + c*Z + d =0 and vanderwaals constant
+      (Coeff, Coeffm,a, b, c, am, bm, A, B, Am, Bm) = compressiblity(P, comp.Pc, Pr, T, comp.Tc, Tr, Kij, w, y_i, n);
+      ( , , a_0, b_0)  = compressiblity(P, comp.Pc, Pr, T0, comp.Tc, T0./comp.Tc, Kij, w, y_i, n);
+      Coeff_T1 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/3), comp.Tc, (T0+(T-T0)/3)./comp.Tc, Kij, w, y_i, n);
+      Coeff_T2 = compressiblity(P, comp.Pc, Pr, (T0+(T-T0)/6), comp.Tc, (T0+(T-T0)/6)./comp.Tc, Kij, w, y_i, n);
+    
+    // compressiblity factor calculation
+      for i in 1:n loop
+        Coeff[i,1]*Z[i]^3 + Coeff[i,2]*Z[i]^2 + Coeff[i,3]*Z[i] + Coeff[i,4] = 0;
+        Coeff_T1[i,1]*Z_T1[i]^3 + Coeff_T1[i,2]*Z_T1[i]^2 + Coeff_T1[i,3]*Z_T1[i] + Coeff_T1[i,4] = 0;
+        Coeff_T2[i,1]*Z_T2[i]^3 + Coeff_T2[i,2]*Z_T2[i]^2 + Coeff_T2[i,3]*Z_T2[i] + Coeff_T2[i,4] = 0;
+      end for;
+      Coeffm[1]*Zm^3 + Coeffm[2]*Zm^2 + Coeffm[3]*Zm + Coeffm[4] = 0;
+    
+    // molar volume calculation
+      V = (R*T/P)*Z;
+      V_0 = (R*T/P)*Z_0;
+      V_T1 = (R*T/P)*Z_T1;
+      V_T2 = (R*T/P)*Z_T2;
+      Vm = Zm*R*T/P;
+    
+    // cp values of ideal gas at different temp between T0 and T
+      Cpig_0 = Functions.VapCpId(comp.VapCp, T0);
+      Cpig_T1 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/3);
+      Cpig_T2 = Functions.VapCpId(comp.VapCp, T0+(T-T0)/6);
+      Cpig = Functions.VapCpId(comp.VapCp, T);
+    
+    // ideal cp for the entire stream and
+        Cpigm = sum(y_i .* Cpig);
+    
+    // cp residual calc for entire stream
+      (Cpresm, dadt_m) = Cp_res_m(P,comp.Pc,Vm,T,comp.Tc,a,b,c,am,bm,Kij,y_i,n);
+    // cp real calc for entire stream
+        Cpm = Cpigm+ Cpresm;
+      
+    // der(a) calc using Cp_res function which will be used in the delH_res calc
+      for i in 1:n loop
+          
+          (  , , , ,dadt_0[i],Cpres_0[i]) = Cp_res(comp[i].Pc, V_0[i], T0, comp[i].Tc, T0/comp[i].Tc, w[i]);
+          ( , , , , ,Cpres_T1[i]) = Cp_res(comp[i].Pc, V_T1[i], T0+(T-T0)/3, comp[i].Tc, Tr[i], w[i]);  
+          ( , , , , ,Cpres_T2[i]) = Cp_res(comp[i].Pc, V_T2[i], T0+(T-T0)/6, comp[i].Tc, Tr[i], w[i]);  
+          ( , , , ,dadt[i],Cpres[i]) = Cp_res(comp[i].Pc, V[i], T, comp[i].Tc, Tr[i], w[i]);
+    
+      end for;
+      
+    // Cp real calc
+      Cp_0 = Cpig_0 + Cpres_0;
+      Cp_T1 = Cpig_T1 + Cpres_T1;
+      Cp_T2 = Cpig_T2 + Cpres_T2;
+      Cp = Cpig + Cpres;
+    
+      for i in 1:n loop
+          //"calculating the heat required to cool reactants ideal"
+          delH_i[i] = (1/3)*(T-T0)*(Cp[i]+Cp_0[i]+4*(Cp_T1[i])+2*(Cp_T2[i]));
+    
+          //calc of residual H to cool reactants
+          delH_res_1[i] = enthalpy_resid(a[i] ,b[i] ,Z[i] , dadt[i] ,P ,T) - enthalpy_resid(a_0[i], b_0[i], Z_0[i], dadt_0[i], P, T0);
+      end for;
+      
+    
+    //calc of heat of reaction at standard state for all the reactions
+        delH[1] = (delH_i[1] ) - (3*(delH_i[3]) + delH_i[2] );
+  //      delH[2] = -delH[1];
+        
+     for i in 1:rxns loop
+          delHf0[i] = Hf0[prod1[i]]-Hf0[reac1[i]];
+     end for;   
+       
+    //heat evolved from each reaction
+      Q = delHf0 + delH;
+    //denominator in the enthalpy balance
+      denm_new = ((sum(Ca))*Cpm);
+    
+    //component balance
+    
+      der(Ca[1]) = ACS*(1/S)*( r[1]);
+      der(Ca[2]) = ACS*(1/S)*( -r[1]);
+      der(Ca[3]) = ACS*(1/S)*( -r[1])*3;
+      der(T) = -ACS*(1/S)*(sum(Q.*r)/(denm_new));
+      
+    //unit conversions
+      T_in_c = T - 273.15;
+      Cpm_kg = Cpm/sum(y_i.*comp.MW);
+      r_i = r*(1/3.6e+6);//converting mol/m3-hr to Kmol/m3-Sec
+      
+    end hysys_comparision;
 
 function enthalpy_resid
 
@@ -249,7 +243,7 @@ end Cp_res_m;
 
 function Cp_res
 input Real Pc,V,T,Tc,Tr,w;
-output Real dpdt,d2p_dt2,dpdv,dvdt,dera,der2a,Cpres;
+output Real /*Cpres,*/dpdt,d2p_dt2,dpdv,dvdt,dera,der2a;
 protected
 constant Real coeff1 = (0.37464 + 1.54226*w-0.26992*w^2), coeff2=0.45724*(((R*Tc)^2)/Pc),coeff = coeff1*coeff2,
 R=8.314;
@@ -264,7 +258,7 @@ der2a := 0.5*((coeff1*coeff2*(1+coeff1*(1-Tr^0.5))/((Tc^0.5)*T^1.5))+(coeff1^2*c
 dpdt := R/(V-b) - dera/(V*(V+b)+b*(V-b));
 d2p_dt2 := -der2a/(V*(V+b)+b*(V-b)); 
 dvdt := dpdt/(R*T/(V-b)^2-a*(2*V+2*b)/(V*(V+b)+b*(V-b))^2);
-Cpres :=-R+T*dpdt*dvdt-T*der2a/(8^0.5*b)*log((V+(1-2^0.5)*b)/(V+(1+2^0.5)*b));
+//Cpres :=-R+T*dpdt*dvdt-T*der2a/(8^0.5*b)*log((V+(1-2^0.5)*b)/(V+(1+2^0.5)*b));
 end Cp_res;
 
 function compressiblity
@@ -310,4 +304,4 @@ end compressiblity;
 
 
 
-end ISOM;
+end isom;
