@@ -2,7 +2,7 @@ within ;
 package ISOM
 
   
-      model hysys_comparision
+       model hysys_comparision
           constant Chemsep_Database.Npentane comp1;
           constant Chemsep_Database.Isopentane comp2;
           constant Chemsep_Database.Nhexane comp3;
@@ -14,9 +14,10 @@ package ISOM
           constant Chemsep_Database.Benzene comp9;
           constant Chemsep_Database.Hydrogen comp10;
           constant Chemsep_Database.Methylcyclopentane comp11;
+          constant Chemsep_Database.Cyclopentane comp12;
           
           constant Integer n = 11 "no. of components";
-          constant Integer rxns = 24 "no. of reactions";
+          constant Integer rxns = 30 "no. of reactions";
           
           constant Chemsep_Database.General_Properties comp[n]={comp1, comp2, comp3, comp4, comp5, comp6, comp7, comp8, comp9, comp10, comp11} "comp contains all the components data ";
           constant Real Kij[n,n]={{0, 0.06, 0.00118, 0, 0, 0, 0.0037, 0.0189, 0, 0, 0},{0.06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},{0.00118, 0, 0, 0, 0, 0, 0, -0.003, 0.0089, -0.03, 0},{0, 0, 0, 0, 0, 0, 0,0 ,0, 0, 0},{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},{0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},{0.037, 0,-0.003, 0, 0, 0, 0, 0, 0.0126, 0, 0},{0.0189, 0, 0.0089, 0, 0, 0, 0, 0.0126, 0, 0, 0},{0, 0, -0.03, 0, 0, 0, 0, 0, 0, 0, 0},{0, 0, 0, 0, 0, 0, 0,0 ,0, 0, 0}} "Binary Interaction coefficients";
@@ -24,15 +25,15 @@ package ISOM
           constant Real Z_0[n] = {0.1491, 0.15, 0.168, 0.17, 0.167, 0.1617, 0.161, 0.1334, 0.1123, 1.01, 0.1394}"compressiblity factor at standard state";
           constant Real w[n] = {0.25, 0.227, 0.297, 0.278, 0.273, 0.233, 0.248, 0.211, 0.209, -0.21599, 0.227} "ascentric factor";
           
-          parameter Real K0[rxns](each unit="1/hr") = {4.76452E+18,7.21139E+18,33730214071,41497229004,1.04236E+21,2.93778E+21,1.34282E+19,1.34282E+19,2.50046E+14,7.04724E+15,99544918.98,8091314788,4.14972E+13,5.72821E+14,3.87275E+12,3.87275E+13,2177805.536,7379366.791,2.5587E+29,8.67E+25, 2.50046E+26, 8.67E+27, 1264791.964, 547040.0177}"Pre exponential factor";
-          parameter Real E[rxns](each unit = "J/mol")={148.93,154.28,143.17,151.41,150.98,155.92,152.96,149.95,127.28,139.07,64.5,77.06,146.14,160.28,98.28,105.4,3.51,4.79,180.2,400.43, 187.05, 300.79, 51.08, 341.89}"activation energy";
+          parameter Real K0[rxns](each unit="1/hr") = {4.76452E+18,7.21139E+18,33730214071.0,41497229004.0,1.04236E+21,2.93778E+21,1.34282E+19,1.34282E+19,2.50046E+14,7.04724E+15,99544918.98,8091314788.0,4.14972E+13,5.72821E+14,3.87275E+12,3.87275E+13,2177805.536,7379366.791,2.5587E+29,8.67E+25, 2.50046E+26, 8.67E+27, 1264791.964, 547040.0177, 6.42716E+09, 5861639397.0, 1.28239E+16, 1.77019E+08, 6.28086E+17, 1.31226E+10}"Pre exponential factor";
+          parameter Real E[rxns](each unit = "J/mol")={148.93,154.28,143.17,151.41,150.98,155.92,152.96,149.95,127.28,139.07,64.5,77.06,146.14,160.28,98.28,105.4,3.51,4.79,180.2,400.43, 187.05, 300.79, 51.08, 341.89, 129.75, 88.64,135.45, 129.29, 154.54, 98.63}"activation energy";
            
           parameter Real Fi(unit="mol/hr") = 1000*1000;
           parameter Real yi[n] = {0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.55, 0} "inlet mole fraction ";
           parameter Real Ca1[n]=Fi*yi/1148;
           
-          constant Integer reac1[rxns] = {1, 2, 3, 4, 3, 5, 4, 5, 4, 6, 4, 7, 5, 6, 5, 7, 6, 7, 9, 8, 9, 11, 8, 11};
-          constant Integer prod1[rxns] = {2, 1, 4, 3, 5, 3, 5, 4, 6, 4, 7, 4, 6, 5, 7, 5, 7, 6, 8, 9, 11, 9, 11, 8};
+          constant Integer reac1[rxns] = {1, 2, 3, 4, 3, 5, 4, 5, 4, 6, 4, 7, 5, 6, 5, 7, 6, 7, 9, 8, 9, 11, 8, 11, 3, 8, 4, 11, 5, 11};
+          constant Integer prod1[rxns] = {2, 1, 4, 3, 5, 3, 5, 4, 6, 4, 7, 4, 6, 5, 7, 5, 7, 6, 8, 9, 11, 9, 11, 8, 8, 3, 11, 4, 11, 5};
           
           parameter Real P(unit="Pa")=3.2e+6 "inlet stream pressure";
           parameter Real Ti (unit="K")= 200+273.15"inlet temperature";
@@ -116,6 +117,14 @@ package ISOM
             r[22] = K[22] * Ca[11];
             r[23] = K[23] * Ca[8];
             r[24] = K[24] * Ca[11];
+            r[25] = K[25] * Ca[3];
+            r[26] = K[26] * Ca[8] * Ca[10];
+            r[27] = K[27] * Ca[4];
+            r[28] = K[28] * Ca[11] * Ca[10];
+            r[29] = K[29] * Ca[5];
+            r[30] = K[30] * Ca[11] * Ca[10];
+  
+            
         
         // coeff calculation in the equation a*Z^3 + b*Z^2 + c*Z + d =0 and vanderwaals constant
           (Coeff, Coeffm,a, b, c, am, bm, A, B, Am, Bm) = compressiblity(P, comp.Pc, Pr, T, comp.Tc, Tr, Kij, w, y_i, n);
@@ -174,6 +183,13 @@ package ISOM
             delH[22] = -delH[21];
             delH[23] = delH_ig[11]-delH_ig[8] + delH_res_1[11]-delH_res_1[8];
             delH[24] = -delH[23];
+            delH[25] = (delH_ig[10] + delH_res_1[10] + delH_ig[8] + delH_res_1[8]) - ( delH_ig[3] + delH_res_1[3] );
+            delH[26] = -delH[25];
+            delH[27] = (delH_ig[10] + delH_res_1[10] + delH_ig[11] + delH_res_1[11]) - ( delH_ig[4] + delH_res_1[4] );
+            delH[28] = -delH[27];
+            delH[29] = (delH_ig[10] + delH_res_1[10] + delH_ig[11] + delH_res_1[11]) - ( delH_ig[5] + delH_res_1[5] );
+            delH[30] = -delH[29];
+  
            
         //heat evolved from each reaction
           Q = delHf0 + delH;
@@ -181,17 +197,18 @@ package ISOM
           denm_new = ((F/S)*Cpm);
         
         //component balance
-          der(Ca[1]) = ACS*(1/S)*(-r[1] + r[2]);
-          der(Ca[2]) =  ACS*(1/S)*(r[1] - r[2]);
-          der(Ca[3]) =  ACS*(1/S)*(-r[3] + r[4] - r[5] + r[6]);
+          der(Ca[1]) = ACS*(1/S)*(-r[1] + r[2] );
+          der(Ca[2]) = ACS*(1/S)*(r[1] - r[2]);
+          der(Ca[3]) = ACS*(1/S)*(-r[3] + r[4] - r[5] + r[6] - r[25] + r[26]);
           der(Ca[4]) = ACS*(1/S)*(r[3] - r[4] -r[7] +r[8] -r[9] + r[10] + r[11] - r[12] );
-          der(Ca[5]) = ACS*(1/S)*(r[5] - r[6] + r[7] - r[8] - r[13] + r[14] - r[15] + r[16]);
-          der(Ca[6]) = ACS*(1/S)*(-r[10] + r[9] + r[13] -r[14] - r[17] + r[18]);
-          der(Ca[7]) = ACS*(1/S)*(-r[12] + r[11] + r[15] - r[16] + r[17] - r[18]);
-          der(Ca[8]) = ACS*(1/S)*(-r[20] + r[19] - r[23] + r[24]);
+          der(Ca[5]) = ACS*(1/S)*(r[5] - r[6] + r[7] - r[8] - r[13] + r[14] - r[15] + r[16] - r[27] + r[28] - r[29] + r[30]);
+          der(Ca[6]) = ACS*(1/S)*(-r[10] + r[9] + r[13] -r[14] - r[17] + r[18] );
+          der(Ca[7]) = ACS*(1/S)*(-r[12] + r[11] + r[15] - r[16] + r[17] - r[18] );
+          der(Ca[8]) = ACS*(1/S)*(-r[20] + r[19] - r[23] + r[24] + r[25] - r[26]);
           der(Ca[9]) = ACS*(1/S)*(r[20] - r[19] - r[21] + r[22]);
-          der(Ca[10]) = ACS*(1/S)*(r[20] - r[19] - r[21] + r[22])*3;
-          der(Ca[11]) = ACS*(1/S)*(r[21] - r[22] + r[23] - r[24]);
+          der(Ca[10]) = ACS*(1/S)*((r[20] - r[19] - r[21] + r[22])*3  + r[25] - r[26] + r[27] - r[28] + r[29] - r[30] );
+          der(Ca[11]) = ACS*(1/S)*(r[21] - r[22] + r[23] - r[24]  + r[27] - r[28] + r[29] - r[30] );
+  //        der(Ca[12]) = ACS*(1/S)*(-r[35] + r[36]);
           
           der(T) = -ACS*(1/S)*(sum(Q.*r)/(denm_new));
           
