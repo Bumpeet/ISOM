@@ -23,7 +23,7 @@ package ISOM
      
   
      constant Integer n = 17 "no. of components";
-     constant Integer rxns = 40 "no. of reactions";
+     constant Integer rxns = 42 "no. of reactions";
      
      constant Chemsep_Database.General_Properties comp[n]={comp1, comp2, comp3, comp4, comp5, comp6, comp7, comp8, comp9, comp10, comp11, comp12, comp13, comp14, comp15, comp16, comp17} "comp contains all the components data ";
      constant Real Kij[n,n]={{0, 0.06, 0, 0, 0, 0, 0.0037, 0.0189, 0, 0, 0, 0,0.0174,0, 0.0267, 0.0078, 0.023},
@@ -86,7 +86,9 @@ package ISOM
     /*37*/4.44651E+15, 
     /*38*/2.80556E+14,
     /*39*/2.6183E+10,
-    /*40*/1.31226E+25};//
+    /*40*/1.31226E+25,
+    /*41*/1.28239E+30,
+    /*42*/1.50667E+10};//
     
     parameter Real E[rxns](each unit = "J/mol")={/*1*/148.93,
     /*2*/154.28,
@@ -127,7 +129,9 @@ package ISOM
     /*37*/59.8, 
     /*38*/54.08,
     /*39*/330.28,
-    /*40*/329.06};//
+    /*40*/329.06,
+    /*41*/284.97,
+    /*42*/166.32};//
      
       
      parameter Real Fi(unit="mol/hr") = 1000*1000;
@@ -135,8 +139,8 @@ package ISOM
      parameter Real yi[n] = y/sum(y);
      parameter Real Ca1[n]=Fi*yi/1094;
      
-     constant Integer reac1[rxns] = {1, 2, 3, 4, 3, 5, 4, 5, 4, 6, 4, 7, 5, 6, 5, 7, 6, 7, 9, 8, 9, 11, 8, 11, 3, 8, 4, 11, 5, 11, 6, 11, 7, 11, 12, 1, 13, 14, 1, 1};
-     constant Integer prod1[rxns] = {2, 1, 4, 3, 5, 3, 5, 4, 6, 4, 7, 4, 6, 5, 7, 5, 7, 6, 8, 9, 11, 9, 11, 8, 8, 3, 11, 4, 11, 5, 11, 6, 11, 7, 1, 12, 14, 13, 15, 15};
+     constant Integer reac1[rxns] = {1, 2, 3, 4, 3, 5, 4, 5, 4, 6, 4, 7, 5, 6, 5, 7, 6, 7, 9, 8, 9, 11, 8, 11, 3, 8, 4, 11, 5, 11, 6, 11, 7, 11, 12, 1, 13, 14, 1, 1, 2, 3};
+     constant Integer prod1[rxns] = {2, 1, 4, 3, 5, 3, 5, 4, 6, 4, 7, 4, 6, 5, 7, 5, 7, 6, 8, 9, 11, 9, 11, 8, 8, 3, 11, 4, 11, 5, 11, 6, 11, 7, 1, 12, 14, 13, 15, 15, 14, 15};
      
      parameter Real P(unit="Pa")=3.2e+6 "inlet stream pressure";
      parameter Real Ti (unit="K")= 147+273.15"inlet temperature";
@@ -236,6 +240,8 @@ package ISOM
        r[38] = K[38] * Ca[14];
        r[39] = K[39] * Ca[1] * Ca[10];
        r[40] = K[40] * Ca[1] * Ca[10];
+       r[41] = K[41] * Ca[2] * Ca[10];
+       r[42] = K[42] * Ca[3] * Ca[10];
        
    
    // coeff calculation in the equation a*Z^3 + b*Z^2 + c*Z + d =0 and vanderwaals constant
@@ -314,6 +320,9 @@ package ISOM
        delH[38] = -delH[37];
        delH[39] = ( delH_ig[15] + delH_res_1[15]+ delH_ig[16] + delH_res_1[16] ) - (delH_ig[10] + delH_res_1[10] + delH_ig[1] + delH_res_1[1]);
        delH[40] = ( delH_ig[13] + delH_res_1[13]+ delH_ig[17] + delH_res_1[17] ) - (delH_ig[10] + delH_res_1[10] + delH_ig[1] + delH_res_1[1]);
+       delH[41] = ( delH_ig[14] + delH_res_1[14]+ delH_ig[17] + delH_res_1[17] ) - (delH_ig[10] + delH_res_1[10] + delH_ig[2] + delH_res_1[2]);
+       delH[42] = 2*( delH_ig[15] + delH_res_1[15] ) - (delH_ig[10] + delH_res_1[10] + delH_ig[3] + delH_res_1[3]);
+  
   
       
    //heat evolved from each reaction
@@ -322,23 +331,23 @@ package ISOM
      denm_new = ((F/S)*Cpm);
    
    //component balance
-     der(Ca[1]) = ACS*(1/S)*(-r[1] + r[2] + r[35] - r[36] - r[39]);
-     der(Ca[2]) = ACS*(1/S)*(r[1] - r[2] -r[40]);
-     der(Ca[3]) = ACS*(1/S)*(-r[3] + r[4] - r[5] + r[6] - r[25] + r[26]);
+     der(Ca[1]) = ACS*(1/S)*(-r[1] + r[2] + r[35] - r[36] - r[39]-r[40]);
+     der(Ca[2]) = ACS*(1/S)*(r[1] - r[2]  -r[41]);
+     der(Ca[3]) = ACS*(1/S)*(-r[3] + r[4] - r[5] + r[6] - r[25] + r[26] - r[42]);
      der(Ca[4]) = ACS*(1/S)*(r[3] - r[4] -r[7] +r[8] -r[9] + r[10] + r[11] - r[12] );
      der(Ca[5]) = ACS*(1/S)*(r[5] - r[6] + r[7] - r[8] - r[13] + r[14] - r[15] + r[16] - r[27] + r[28] - r[29] + r[30]);
      der(Ca[6]) = ACS*(1/S)*(-r[10] + r[9] + r[13] -r[14] - r[17] + r[18] -r[31] + r[32]);
      der(Ca[7]) = ACS*(1/S)*(-r[12] + r[11] + r[15] - r[16] + r[17] - r[18] -r[33] +r[34]);
      der(Ca[8]) = ACS*(1/S)*(-r[20] + r[19] - r[23] + r[24] + r[25] - r[26]);
      der(Ca[9]) = ACS*(1/S)*(r[20] - r[19] - r[21] + r[22]);
-     der(Ca[10]) = ACS*(1/S)*((r[20] - r[19] - r[21] + r[22])*3  + r[25] - r[26] + r[27] - r[28] + r[29] - r[30] +r[31] - r[32] +r[33] -r[34] -r[35] - r[36] - r[39] -r[40]);
+     der(Ca[10]) = ACS*(1/S)*((r[20] - r[19] - r[21] + r[22])*3  + r[25] - r[26] + r[27] - r[28] + r[29] - r[30] +r[31] - r[32] +r[33] -r[34] -r[35] - r[36] - r[39] -r[40] - r[41] - r[42]);
      der(Ca[11]) = ACS*(1/S)*(r[21] - r[22] + r[23] - r[24]  + r[27] - r[28] + r[29] - r[30] +r[31] - r[32] +r[33] -r[34]);
      der(Ca[12]) = ACS*(1/S)*(-r[35] + r[36]);
      der(Ca[13]) = ACS*(1/S)*(-r[37] + r[38] + r[40]);
-     der(Ca[14]) = ACS*(1/S)*(+r[37] - r[38]);
-     der(Ca[15]) = ACS*(1/S)*(r[39]);
+     der(Ca[14]) = ACS*(1/S)*(+r[37] - r[38] + r[41]);
+     der(Ca[15]) = ACS*(1/S)*(r[39] + 2*r[42]);
      der(Ca[16]) = ACS*(1/S)*(r[39]);
-     der(Ca[17]) = ACS*(1/S)*(r[40]);
+     der(Ca[17]) = ACS*(1/S)*(r[40] + r[41]);
   
      
      
